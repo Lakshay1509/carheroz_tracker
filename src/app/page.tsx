@@ -1,3 +1,4 @@
+
 "use client";
 
 import type * as React from 'react';
@@ -64,7 +65,7 @@ export default function ServiceTrackerPage() {
             ...data,
             serviceDate: (data.serviceDate as Timestamp).toDate(), // Convert Firestore Timestamp to Date
             createdAt: data.createdAt as Timestamp,
-          } as ServiceWithId;
+          } as ServiceWithId; // ServiceWithId type is updated, will expect paymentMode
         });
         setServices(servicesData);
         setIsLoading(false);
@@ -79,11 +80,11 @@ export default function ServiceTrackerPage() {
     return () => unsubscribe();
   }, [toast]);
 
-  const handleAddService = async (data: ServiceFormData) => {
+  const handleAddService = async (data: ServiceFormData) => { // ServiceFormData type is updated
     try {
-      const serviceWithTimestamp: Service = {
-        ...data,
-        serviceDate: data.serviceDate!, // Already a Date object from form
+      const serviceWithTimestamp: Service = { // Service type is updated
+        ...data, // data now contains paymentMode instead of paymentStatus
+        serviceDate: data.serviceDate!, 
         createdAt: serverTimestamp() as Timestamp,
       };
       await addDoc(collection(db, "services"), serviceWithTimestamp);
@@ -94,12 +95,12 @@ export default function ServiceTrackerPage() {
     }
   };
 
-  const handleUpdateService = async (data: ServiceFormData) => {
+  const handleUpdateService = async (data: ServiceFormData) => { // ServiceFormData type is updated
     if (!currentService) return;
     try {
       const serviceDocRef = doc(db, "services", currentService.id);
-      const updatedService: Partial<Service> = {
-        ...data,
+      const updatedService: Partial<Service> = { // Service type is updated
+        ...data, // data now contains paymentMode
         serviceDate: data.serviceDate!,
       };
       await updateDoc(serviceDocRef, updatedService);
@@ -125,7 +126,7 @@ export default function ServiceTrackerPage() {
     }
   };
 
-  const openEditDialog = (service: ServiceWithId) => {
+  const openEditDialog = (service: ServiceWithId) => { // ServiceWithId type is updated
     setCurrentService(service);
     setIsEditDialogOpen(true);
   };
@@ -140,7 +141,8 @@ export default function ServiceTrackerPage() {
       toast({ title: "Info", description: "No data to export." });
       return;
     }
-    const headers = ["Employee Name", "Customer Name", "Customer Email", "Service Type", "Service Date", "Payment Amount", "Payment Status"];
+    // Updated headers and data access for paymentMode
+    const headers = ["Employee Name", "Customer Name", "Customer Email", "Service Type", "Service Date", "Payment Amount", "Payment Mode"];
     const csvRows = [
       headers.join(','),
       ...services.map(s => [
@@ -148,9 +150,9 @@ export default function ServiceTrackerPage() {
         `"${s.customerName.replace(/"/g, '""')}"`,
         `"${s.customerEmail.replace(/"/g, '""')}"`,
         `"${s.serviceType.replace(/"/g, '""')}"`,
-        s.serviceDate.toISOString().split('T')[0], // YYYY-MM-DD
+        s.serviceDate.toISOString().split('T')[0], 
         s.paymentAmount,
-        s.paymentStatus
+        s.paymentMode // Changed from s.paymentStatus
       ].join(','))
     ];
     const csvString = csvRows.join('\r\n');
@@ -226,12 +228,12 @@ export default function ServiceTrackerPage() {
               Update the details for this service record. Click save when you're done.
             </DialogDescription>
           </DialogHeader>
-          {currentService && (
+          {currentService && ( // currentService is ServiceWithId, which now has paymentMode
             <ServiceForm
               onSubmit={handleUpdateService}
-              initialData={{
+              initialData={{ // initialData is ServiceFormData, which now expects paymentMode
                 ...currentService,
-                serviceDate: currentService.serviceDate, // Already a Date object
+                serviceDate: currentService.serviceDate, 
               }}
               isEditing={true}
               onClose={() => setIsEditDialogOpen(false)}

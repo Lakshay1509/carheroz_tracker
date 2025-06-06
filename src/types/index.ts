@@ -1,3 +1,4 @@
+
 import type { Timestamp } from "firebase/firestore";
 
 export interface Service {
@@ -7,7 +8,7 @@ export interface Service {
   serviceType: string;
   serviceDate: Date; // Stored as Date object, converted to/from Firestore Timestamp
   paymentAmount: number;
-  paymentStatus: "Paid" | "Pending" | "Overdue";
+  paymentMode: "Online" | "Cash"; // Changed from paymentStatus to paymentMode and new values
   createdAt?: Timestamp; // Firestore Timestamp for sorting
 }
 
@@ -16,6 +17,7 @@ export interface ServiceWithId extends Service {
 }
 
 // For form handling, serviceDate might be string initially or Date
+// ServiceFormData will now implicitly include paymentMode from Service
 export type ServiceFormData = Omit<Service, 'createdAt' | 'serviceDate'> & {
   serviceDate: Date | undefined;
 };

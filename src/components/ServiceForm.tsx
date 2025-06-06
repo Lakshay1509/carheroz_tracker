@@ -1,3 +1,4 @@
+
 "use client";
 
 import type * as React from 'react';
@@ -40,7 +41,7 @@ const serviceFormSchema = z.object({
   serviceType: z.string().min(1, "Service type is required"),
   serviceDate: z.date({ required_error: "Service date is required" }),
   paymentAmount: z.coerce.number().positive("Payment amount must be positive"),
-  paymentStatus: z.enum(["Paid", "Pending", "Overdue"], { required_error: "Payment status is required" }),
+  paymentMode: z.enum(["Online", "Cash"], { required_error: "Payment mode is required" }), // Changed from paymentStatus
 });
 
 interface ServiceFormProps {
@@ -60,11 +61,11 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
       serviceType: "",
       serviceDate: undefined,
       paymentAmount: 0,
-      paymentStatus: "Pending",
+      paymentMode: "Online", // Changed from paymentStatus: "Pending"
     },
   });
 
-  const paymentStatusOptions: Array<ServiceFormData["paymentStatus"]> = ["Paid", "Pending", "Overdue"];
+  const paymentModeOptions: Array<ServiceFormData["paymentMode"]> = ["Online", "Cash"]; // Changed from paymentStatusOptions
 
   async function handleSubmit(data: ServiceFormData) {
     await onSubmit(data);
@@ -84,7 +85,7 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
               <FormItem>
                 <FormLabel>Employee Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. John Doe" {...field} />
+                  <Input placeholder="e.g. John Doe" {...field} spellCheck={false} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -97,7 +98,7 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
               <FormItem>
                 <FormLabel>Customer Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. Jane Smith" {...field} />
+                  <Input placeholder="e.g. Jane Smith" {...field} spellCheck={false} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -110,7 +111,7 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
               <FormItem>
                 <FormLabel>Customer Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="e.g. jane@example.com" {...field} />
+                  <Input type="email" placeholder="e.g. jane@example.com" {...field} spellCheck={false} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -123,7 +124,7 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
               <FormItem>
                 <FormLabel>Service Type</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. Consultation, Repair" {...field} />
+                  <Input placeholder="e.g. Consultation, Repair" {...field} spellCheck={false} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -175,7 +176,7 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
             name="paymentAmount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Payment Amount ($)</FormLabel>
+                <FormLabel>Payment Amount (₹)</FormLabel> {/* Changed label */}
                 <FormControl>
                   <Input type="number" step="0.01" {...field} />
                 </FormControl>
@@ -185,20 +186,20 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
           />
           <FormField
             control={form.control}
-            name="paymentStatus"
+            name="paymentMode" // Changed from paymentStatus
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Payment Status</FormLabel>
+                <FormLabel>Payment Mode</FormLabel> {/* Changed label */}
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select payment status" />
+                      <SelectValue placeholder="Select payment mode" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {paymentStatusOptions.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
+                    {paymentModeOptions.map((mode) => ( // Changed from paymentStatusOptions
+                      <SelectItem key={mode} value={mode}>
+                        {mode}
                       </SelectItem>
                     ))}
                   </SelectContent>
