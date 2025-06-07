@@ -8,6 +8,7 @@ export interface Service {
   paymentAmount: number;
   paymentMode: "Online" | "Cash";
   createdAt?: Timestamp; // Firestore Timestamp for sorting
+  userId?: string; // Added to associate service with a user
 }
 
 export interface ServiceWithId extends Service {
@@ -16,6 +17,6 @@ export interface ServiceWithId extends Service {
 
 // For form handling, serviceDate might be string initially or Date
 // ServiceFormData will now implicitly include paymentMode from Service
-export type ServiceFormData = Omit<Service, 'createdAt' | 'serviceDate'> & {
+export type ServiceFormData = Omit<Service, 'createdAt' | 'serviceDate' | 'userId'> & {
   serviceDate: Date | undefined;
 };

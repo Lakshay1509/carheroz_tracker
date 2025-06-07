@@ -3,6 +3,7 @@
 
 import type * as React from 'react';
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   collection,
   addDoc,
@@ -14,6 +15,7 @@ import {
   Timestamp,
   updateDoc,
   serverTimestamp,
+  where, // Import where for querying by userId
 } from "firebase/firestore";
 import { Download, PlusCircle, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -48,57 +50,80 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
 export default function ServiceTrackerPage() {
+  const { user, loading: authLoading } = useAuth(); // Get user and loading state
+  const router = useRouter();
+
   const [services, setServices] = useState<ServiceWithId[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // For service data loading
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentService, setCurrentService] = useState<ServiceWithId | null>(null);
   const [serviceToDeleteId, setServiceToDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // New state for multi-service entry
   const [selectedEmployeeName, setSelectedEmployeeName] = useState<string>("");
   const [selectedServiceDate, setSelectedServiceDate] = useState<Date | undefined>(undefined);
   const [serviceEntries, setServiceEntries] = useState<ServiceEntry[]>([]);
 
   useEffect(() => {
-    const servicesCollection = collection(db, "services");
-    const q = query(servicesCollection, orderBy("serviceDate", "desc"));
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const servicesData = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            serviceDate: (data.serviceDate as Timestamp).toDate(),
-            createdAt: data.createdAt as Timestamp,
-          } as ServiceWithId;
-        });
-        setServices(servicesData);
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error("Error fetching services:", error);
-        toast({ title: "Error", description: "Failed to fetch services.", variant: "destructive" });
-        setIsLoading(false);
-      }
-    );
+  useEffect(() => {
+    if (user) { // Only fetch services if user is logged in
+      setIsLoading(true);
+      const servicesCollection = collection(db, "services");
+      // Query services for the current user, ordered by serviceDate
+      const q = query(
+        servicesCollection,
+        where("userId", "==", user.uid), // Filter by userId
+        orderBy("serviceDate", "desc")
+      );
 
-    return () => unsubscribe();
-  }, [toast]);
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const servicesData = snapshot.docs.map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              serviceDate: (data.serviceDate as Timestamp).toDate(),
+              createdAt: data.createdAt as Timestamp,
+            } as ServiceWithId;
+          });
+          setServices(servicesData);
+          setIsLoading(false);
+        },
+        (error) => {
+          console.error("Error fetching services:", error);
+          toast({ title: "Error", description: "Failed to fetch services.", variant: "destructive" });
+          setIsLoading(false);
+        }
+      );
+      return () => unsubscribe();
+    } else {
+      // Clear services if user logs out or is not available
+      setServices([]);
+      setIsLoading(false);
+    }
+  }, [user, toast]);
+
 
   const handleUpdateService = async (data: ServiceFormData) => {
-    if (!currentService) return;
+    if (!currentService || !user) return; // Ensure user is logged in
+    // Note: Firestore rules should enforce that only the owner (or authorized user) can update.
     try {
       const serviceDocRef = doc(db, "services", currentService.id);
       const updatedService: Partial<Service> = {
         ...data,
         serviceDate: data.serviceDate!,
+        // userId is not updated here, it's set on creation
       };
       await updateDoc(serviceDocRef, updatedService);
       toast({ title: "Success", description: "Service record updated." });
@@ -111,13 +136,15 @@ export default function ServiceTrackerPage() {
   };
 
   const handleDeleteService = async () => {
-    if (!serviceToDeleteId) return;
+    if (!serviceToDeleteId || !user) return; // Ensure user is logged in
+    // Note: Firestore rules should enforce deletion permissions
     try {
       await deleteDoc(doc(db, "services", serviceToDeleteId));
       toast({ title: "Success", description: "Service record deleted." });
       setIsDeleteDialogOpen(false);
       setServiceToDeleteId(null);
-    } catch (error) {
+    } catch (error)
+{
       console.error("Error deleting service:", error);
       toast({ title: "Error", description: "Failed to delete service record.", variant: "destructive" });
     }
@@ -138,13 +165,13 @@ export default function ServiceTrackerPage() {
       toast({ title: "Info", description: "No data to export." });
       return;
     }
-    const headers = ["Employee Name", "Service Type", "Service Date", "Payment Amount", "Payment Mode"];
+    const headers = ["Employee Name", "Service Type", "Service Date", "Payment Amount (₹)", "Payment Mode"];
     const csvRows = [
       headers.join(','),
       ...services.map(s => [
         `"${s.employeeName.replace(/"/g, '""')}"`,
         `"${s.serviceType.replace(/"/g, '""')}"`,
-        s.serviceDate.toISOString().split('T')[0], 
+        s.serviceDate instanceof Date ? format(s.serviceDate, "yyyy-MM-dd") : 'Invalid Date',
         s.paymentAmount,
         s.paymentMode
       ].join(','))
@@ -167,19 +194,18 @@ export default function ServiceTrackerPage() {
     }
   }, [services, toast]);
 
-  // New handlers for multi-service entry
   const handleAddServiceEntry = () => {
-    setServiceEntries(prev => [...prev, { 
-      id: Date.now().toString(), // Simple unique ID for client-side list management
-      serviceType: "", 
-      paymentAmount: 0, 
-      paymentMode: "Online" 
+    setServiceEntries(prev => [...prev, {
+      id: Date.now().toString(),
+      serviceType: "",
+      paymentAmount: 0,
+      paymentMode: "Online"
     }]);
   };
 
   const handleServiceEntryChange = (id: string, field: keyof Omit<ServiceEntry, 'id'>, value: string | number | Date) => {
-    setServiceEntries(prev => 
-      prev.map(entry => 
+    setServiceEntries(prev =>
+      prev.map(entry =>
         entry.id === id ? { ...entry, [field]: value } : entry
       )
     );
@@ -190,6 +216,10 @@ export default function ServiceTrackerPage() {
   };
 
   const handleSaveAllServices = async () => {
+    if (!user) { // Check if user is logged in
+      toast({ title: "Authentication Error", description: "You must be logged in to save services.", variant: "destructive" });
+      return;
+    }
     if (!selectedEmployeeName.trim()) {
       toast({ title: "Validation Error", description: "Employee name is required.", variant: "destructive" });
       return;
@@ -207,12 +237,12 @@ export default function ServiceTrackerPage() {
     for (const entry of serviceEntries) {
       if (!entry.serviceType.trim()) {
         allValid = false;
-        toast({ title: "Validation Error", description: `Service type is required for all entries (entry ID: ${entry.id}).`, variant: "destructive" });
+        toast({ title: "Validation Error", description: `Service type is required for all entries.`, variant: "destructive" });
         break;
       }
       if (entry.paymentAmount <= 0) {
         allValid = false;
-        toast({ title: "Validation Error", description: `Payment amount must be positive for all entries (entry ID: ${entry.id}).`, variant: "destructive" });
+        toast({ title: "Validation Error", description: `Payment amount must be positive for all entries.`, variant: "destructive" });
         break;
       }
     }
@@ -222,21 +252,19 @@ export default function ServiceTrackerPage() {
     try {
       setIsLoading(true);
       for (const entry of serviceEntries) {
-        const serviceWithTimestamp: Service = {
+        const serviceWithDetails: Service = {
           employeeName: selectedEmployeeName,
           serviceDate: selectedServiceDate,
           serviceType: entry.serviceType,
           paymentAmount: Number(entry.paymentAmount),
           paymentMode: entry.paymentMode,
           createdAt: serverTimestamp() as Timestamp,
+          userId: user.uid, // Associate service with the logged-in user
         };
-        await addDoc(collection(db, "services"), serviceWithTimestamp);
+        await addDoc(collection(db, "services"), serviceWithDetails);
       }
       toast({ title: "Success", description: `${serviceEntries.length} service(s) added for ${selectedEmployeeName} on ${format(selectedServiceDate, "PPP")}.` });
-      setServiceEntries([]); // Clear entries after saving
-      // Optionally clear selectedEmployeeName and selectedServiceDate
-      // setSelectedEmployeeName("");
-      // setSelectedServiceDate(undefined);
+      setServiceEntries([]);
     } catch (error) {
       console.error("Error adding services:", error);
       toast({ title: "Error", description: "Failed to add service records.", variant: "destructive" });
@@ -246,6 +274,15 @@ export default function ServiceTrackerPage() {
   };
 
   const canAddOrSave = selectedEmployeeName.trim() !== "" && selectedServiceDate !== undefined;
+  
+  // If auth is loading or user is not available (and not loading), show loading/redirect message
+  if (authLoading || (!user && !authLoading)) {
+    return (
+      <div className="container mx-auto p-4 text-center">
+        <p>Loading user authentication...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4 md:p-8 font-body">
@@ -266,9 +303,9 @@ export default function ServiceTrackerPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label htmlFor="employeeName" className="block text-sm font-medium text-foreground mb-1">Employee Name</label>
-              <Input 
+              <Input
                 id="employeeName"
-                placeholder="Enter employee name" 
+                placeholder="Enter employee name"
                 value={selectedEmployeeName}
                 onChange={(e) => setSelectedEmployeeName(e.target.value)}
                 className="w-full"
@@ -314,7 +351,7 @@ export default function ServiceTrackerPage() {
           {serviceEntries.length > 0 && (
             <div className="space-y-4 mt-4">
               {serviceEntries.map((entry, index) => (
-                <ServiceEntryItem 
+                <ServiceEntryItem
                   key={entry.id}
                   entry={entry}
                   onChange={handleServiceEntryChange}
@@ -324,7 +361,7 @@ export default function ServiceTrackerPage() {
               ))}
             </div>
           )}
-          
+
           {serviceEntries.length > 0 && canAddOrSave && (
             <div className="flex justify-end mt-6">
               <Button onClick={handleSaveAllServices} disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
@@ -335,14 +372,14 @@ export default function ServiceTrackerPage() {
           )}
         </CardContent>
       </Card>
-      
+
       <Separator className="my-8" />
 
       <Card className="shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-2xl font-headline">All Service Records</CardTitle>
-            <CardDescription>View and manage all recorded services.</CardDescription>
+            <CardTitle className="text-2xl font-headline">My Service Records</CardTitle>
+            <CardDescription>View and manage your recorded services.</CardDescription>
           </div>
           <Button onClick={exportToCSV} variant="outline" className="ml-auto">
             <Download className="mr-2 h-4 w-4" />
@@ -350,7 +387,7 @@ export default function ServiceTrackerPage() {
           </Button>
         </CardHeader>
         <CardContent>
-          {isLoading && services.length === 0 ? ( // Show loading only if services are also empty
+          {isLoading && services.length === 0 ? (
             <p className="text-center py-8">Loading service records...</p>
           ) : (
             <ServiceTable
@@ -362,21 +399,20 @@ export default function ServiceTrackerPage() {
         </CardContent>
       </Card>
 
-      {/* Edit Service Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="font-headline text-xl">Edit Service Record</DialogTitle>
             <DialogDescription>
-              Update the details for this service record. Click save when you're done.
+              Update the details for this service record. Click save when you&apos;re done.
             </DialogDescription>
           </DialogHeader>
           {currentService && (
             <ServiceForm
               onSubmit={handleUpdateService}
-              initialData={{ 
+              initialData={{
                 ...currentService,
-                serviceDate: currentService.serviceDate, 
+                serviceDate: currentService.serviceDate instanceof Date ? currentService.serviceDate : undefined,
               }}
               isEditing={true}
               onClose={() => setIsEditDialogOpen(false)}
@@ -385,7 +421,6 @@ export default function ServiceTrackerPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -405,5 +440,3 @@ export default function ServiceTrackerPage() {
     </div>
   );
 }
-
-    
