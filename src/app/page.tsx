@@ -162,7 +162,7 @@ export default function ServiceTrackerPage() {
       toast({ title: "Info", description: "No data to export." });
       return;
     }
-    const headers = ["Employee Name", "Service Type", "Service Date", "Payment Amount (₹)", "Payment Mode", "Payment Accepted By"];
+    const headers = ["Employee Name", "Service Type", "Service Date", "Payment Amount", "Payment Mode", "Payment Accepted By"];
     const csvRows = [
       headers.join(','),
       ...services.map(s => [
