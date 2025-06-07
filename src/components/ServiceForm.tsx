@@ -41,7 +41,7 @@ const serviceFormSchema = z.object({
   employeeName: z.string().min(1, "Employee name is required"),
   serviceType: z.string().min(1, "Service type is required"),
   serviceDate: z.date({ required_error: "Service date is required" }),
-  paymentAmount: z.coerce.number().positive("Payment amount must be positive"),
+  paymentAmount: z.coerce.number().min(0, "Payment amount must be 0 or greater"),
   paymentMode: z.enum(["Online", "Cash"], { required_error: "Payment mode is required" }),
   paymentAcceptedBy: paymentAcceptedByEnum,
 });
