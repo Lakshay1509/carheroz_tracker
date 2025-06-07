@@ -2,12 +2,14 @@
 "use client";
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation'; // Import usePathname
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton'; // For loading state
 
 export function AuthNav() {
   const { user, loading, logout } = useAuth();
+  const pathname = usePathname(); // Get current pathname
 
   if (loading) {
     return (
@@ -29,10 +31,19 @@ export function AuthNav() {
         </>
       ) : (
         <>
-          <Button variant="ghost" size="sm" asChild>
+          <Button
+            variant={pathname === '/login' ? 'default' : 'ghost'}
+            size="sm"
+            asChild
+          >
             <Link href="/login">Login</Link>
           </Button>
-          <Button variant="default" size="sm" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button
+            variant={pathname === '/signup' ? 'default' : 'outline'}
+            size="sm"
+            asChild
+            className={pathname === '/signup' ? "bg-accent hover:bg-accent/90 text-accent-foreground" : ""}
+          >
             <Link href="/signup">Sign Up</Link>
           </Button>
         </>
