@@ -293,10 +293,7 @@ export default function ServiceTrackerPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-8 font-body">
-      <header className="mb-8">
-        <h1 className="text-4xl font-headline font-bold text-primary-foreground">Service Tracker</h1>
-        <p className="text-muted-foreground">Manage and track your service records efficiently.</p>
-      </header>
+      
 
       <Card className="mb-8 shadow-lg">
         <CardHeader>
