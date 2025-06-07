@@ -1,8 +1,7 @@
 
 "use client";
 
-import type * as React from 'react';
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -18,7 +17,7 @@ export default function SignupPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!authLoading && user) {
       router.push('/'); // Redirect if already logged in
     }
