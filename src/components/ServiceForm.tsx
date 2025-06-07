@@ -1,4 +1,3 @@
-
 "use client";
 
 import type * as React from 'react';
@@ -7,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
+import CurrencyInput from 'react-currency-input-field';
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -62,6 +62,7 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
   });
 
   const paymentModeOptions: Array<ServiceFormData["paymentMode"]> = ["Online", "Cash"];
+  const serviceTypeOptions = ["Deep clean", "One time", "Car Spa"];
 
   async function handleSubmit(data: ServiceFormData) {
     await onSubmit(data);
@@ -110,9 +111,20 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Service Type</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g. Consultation, Repair" {...field} spellCheck={false} />
-                </FormControl>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select service type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {serviceTypeOptions.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -163,9 +175,19 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
             name="paymentAmount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Payment Amount (₹)</FormLabel>
+                <FormLabel>Payment Amount (INR)</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" {...field} />
+                  <CurrencyInput
+                    name={field.name}
+                    placeholder=""
+                    value={field.value}
+                    decimalsLimit={2}
+                    prefix=""
+                    groupSeparator=","
+                    decimalSeparator="."
+                    onValueChange={(value) => field.onChange(parseFloat(value || '0'))}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

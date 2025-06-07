@@ -45,7 +45,7 @@ export function ServiceTable({ services, onEdit, onDelete }: ServiceTableProps) 
               <TableCell>{service.employeeName}</TableCell>
               <TableCell>{service.serviceType}</TableCell>
               <TableCell>{format(service.serviceDate, "MMM d, yyyy")}</TableCell>
-              <TableCell className="text-right">₹{service.paymentAmount.toFixed(2)}</TableCell>
+              <TableCell className="text-right">{service.paymentAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
               <TableCell>
                 {service.paymentMode}
               </TableCell>

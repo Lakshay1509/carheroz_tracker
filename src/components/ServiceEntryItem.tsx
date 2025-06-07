@@ -1,10 +1,10 @@
-
 "use client";
 
 import type * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import CurrencyInput from 'react-currency-input-field';
 import {
   Select,
   SelectContent,
@@ -32,6 +32,7 @@ interface ServiceEntryItemProps {
 
 export function ServiceEntryItem({ entry, onChange, onRemove, entryIndex }: ServiceEntryItemProps) {
   const paymentModeOptions: Array<Service["paymentMode"]> = ["Online", "Cash"];
+  const serviceTypeOptions = ["Deep clean", "One time", "Car Spa"];
 
   return (
     <Card className="shadow-md hover:shadow-lg transition-shadow">
@@ -45,21 +46,35 @@ export function ServiceEntryItem({ entry, onChange, onRemove, entryIndex }: Serv
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1">
             <Label htmlFor={`serviceType-${entry.id}`}>Service Type</Label>
-            <Input
-              id={`serviceType-${entry.id}`}
-              placeholder="e.g. Consultation, Repair"
+            <Select
               value={entry.serviceType}
-              onChange={(e) => onChange(entry.id, 'serviceType', e.target.value)}
-            />
+              onValueChange={(value) => onChange(entry.id, 'serviceType', value)}
+            >
+              <SelectTrigger id={`serviceType-${entry.id}`}>
+                <SelectValue placeholder="Select service type" />
+              </SelectTrigger>
+              <SelectContent>
+                {serviceTypeOptions.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
-            <Label htmlFor={`paymentAmount-${entry.id}`}>Payment Amount (₹)</Label>
-            <Input
+            <Label htmlFor={`paymentAmount-${entry.id}`}>Payment Amount (INR)</Label>
+            <CurrencyInput
               id={`paymentAmount-${entry.id}`}
-              type="number"
-              step="0.01"
+              name={`paymentAmount-${entry.id}`}
+              placeholder=""
               value={entry.paymentAmount}
-              onChange={(e) => onChange(entry.id, 'paymentAmount', parseFloat(e.target.value) || 0)}
+              decimalsLimit={2}
+              prefix=""
+              groupSeparator=","
+              decimalSeparator="."
+              onValueChange={(value) => onChange(entry.id, 'paymentAmount', parseFloat(value || '0'))}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
           <div className="space-y-1">
@@ -86,4 +101,3 @@ export function ServiceEntryItem({ entry, onChange, onRemove, entryIndex }: Serv
   );
 }
 
-    
