@@ -1,3 +1,4 @@
+
 "use client";
 
 import type * as React from 'react';
@@ -14,13 +15,14 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
-import type { Service } from '@/types'; // Re-use PaymentMode type
+import type { Service, PaymentAcceptedByType } from '@/types';
 
 export interface ServiceEntry {
   id: string;
   serviceType: string;
   paymentAmount: number;
   paymentMode: Service["paymentMode"];
+  paymentAcceptedBy: PaymentAcceptedByType;
 }
 
 interface ServiceEntryItemProps {
@@ -32,6 +34,7 @@ interface ServiceEntryItemProps {
 
 export function ServiceEntryItem({ entry, onChange, onRemove, entryIndex }: ServiceEntryItemProps) {
   const paymentModeOptions: Array<Service["paymentMode"]> = ["Online", "Cash"];
+  const paymentAcceptedByOptions: PaymentAcceptedByType[] = ["Car Heroz Account", "Employee"];
   const serviceTypeOptions = ["Deep clean", "One time", "Car Spa"];
 
   return (
@@ -43,7 +46,7 @@ export function ServiceEntryItem({ entry, onChange, onRemove, entryIndex }: Serv
         </Button>
       </CardHeader>
       <CardContent className="p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
             <Label htmlFor={`serviceType-${entry.id}`}>Service Type</Label>
             <Select
@@ -59,24 +62,27 @@ export function ServiceEntryItem({ entry, onChange, onRemove, entryIndex }: Serv
                     {type}
                   </SelectItem>
                 ))}
+                <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label htmlFor={`paymentAmount-${entry.id}`}>Payment Amount (INR)</Label>
+            <Label htmlFor={`paymentAmount-${entry.id}`}>Payment Amount (₹)</Label>
             <CurrencyInput
               id={`paymentAmount-${entry.id}`}
               name={`paymentAmount-${entry.id}`}
-              placeholder=""
+              placeholder="Enter amount"
               value={entry.paymentAmount}
               decimalsLimit={2}
-              prefix=""
+              prefix="₹"
               groupSeparator=","
               decimalSeparator="."
-              onValueChange={(value) => onChange(entry.id, 'paymentAmount', parseFloat(value || '0'))}
+              onValueChange={(value) => onChange(entry.id, 'paymentAmount', parseFloat(value?.replace(/₹/g, '') || '0'))}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
             <Label htmlFor={`paymentMode-${entry.id}`}>Payment Mode</Label>
             <Select
@@ -95,9 +101,26 @@ export function ServiceEntryItem({ entry, onChange, onRemove, entryIndex }: Serv
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-1">
+            <Label htmlFor={`paymentAcceptedBy-${entry.id}`}>Payment Accepted By</Label>
+            <Select
+              value={entry.paymentAcceptedBy}
+              onValueChange={(value: PaymentAcceptedByType) => onChange(entry.id, 'paymentAcceptedBy', value)}
+            >
+              <SelectTrigger id={`paymentAcceptedBy-${entry.id}`}>
+                <SelectValue placeholder="Select who accepted payment" />
+              </SelectTrigger>
+              <SelectContent>
+                {paymentAcceptedByOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </CardContent>
     </Card>
   );
 }
-

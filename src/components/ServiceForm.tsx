@@ -1,3 +1,4 @@
+
 "use client";
 
 import type * as React from 'react';
@@ -32,7 +33,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { ServiceFormData } from "@/types";
+import type { ServiceFormData, PaymentAcceptedByType } from "@/types";
+
+const paymentAcceptedByEnum = z.enum(["Car Heroz Account", "Employee"]);
 
 const serviceFormSchema = z.object({
   employeeName: z.string().min(1, "Employee name is required"),
@@ -40,6 +43,7 @@ const serviceFormSchema = z.object({
   serviceDate: z.date({ required_error: "Service date is required" }),
   paymentAmount: z.coerce.number().positive("Payment amount must be positive"),
   paymentMode: z.enum(["Online", "Cash"], { required_error: "Payment mode is required" }),
+  paymentAcceptedBy: paymentAcceptedByEnum,
 });
 
 interface ServiceFormProps {
@@ -58,22 +62,25 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
       serviceDate: undefined,
       paymentAmount: 0,
       paymentMode: "Online",
+      paymentAcceptedBy: "Car Heroz Account",
     },
   });
 
   const paymentModeOptions: Array<ServiceFormData["paymentMode"]> = ["Online", "Cash"];
-  const serviceTypeOptions = ["Deep clean", "One time", "Car Spa"];
+  const paymentAcceptedByOptions: PaymentAcceptedByType[] = ["Car Heroz Account", "Employee"];
+  const serviceTypeOptions = ["Deep clean", "One time", "Car Spa", "Other"];
+
 
   async function handleSubmit(data: ServiceFormData) {
     await onSubmit(data);
     if (!isEditing) {
-      // Reset form to defaultValues when adding, not to potentially populated defaultValues from initialData
-      form.reset({ 
+      form.reset({
         employeeName: "",
         serviceType: "",
         serviceDate: undefined,
         paymentAmount: 0,
         paymentMode: "Online",
+        paymentAcceptedBy: "Car Heroz Account",
       });
     }
   }
@@ -85,6 +92,7 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
       serviceDate: undefined,
       paymentAmount: 0,
       paymentMode: "Online",
+      paymentAcceptedBy: "Car Heroz Account",
     });
   };
 
@@ -175,17 +183,17 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
             name="paymentAmount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Payment Amount (INR)</FormLabel>
+                <FormLabel>Payment Amount (₹)</FormLabel>
                 <FormControl>
                   <CurrencyInput
                     name={field.name}
-                    placeholder=""
+                    placeholder="Enter amount"
                     value={field.value}
                     decimalsLimit={2}
-                    prefix=""
+                    prefix="₹"
                     groupSeparator=","
                     decimalSeparator="."
-                    onValueChange={(value) => field.onChange(parseFloat(value || '0'))}
+                    onValueChange={(value) => field.onChange(parseFloat(value?.replace(/₹/g, '') || '0'))}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </FormControl>
@@ -217,6 +225,30 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
               </FormItem>
             )}
           />
+          <FormField
+            control={form.control}
+            name="paymentAcceptedBy"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Payment Accepted By</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select who accepted payment" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {paymentAcceptedByOptions.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         <div className="flex justify-end space-x-2">
           {!isEditing && (
@@ -233,4 +265,3 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
     </Form>
   );
 }
-

@@ -36,6 +36,7 @@ export function ServiceTable({ services, onEdit, onDelete }: ServiceTableProps) 
             <TableHead>Date</TableHead>
             <TableHead className="text-right">Amount</TableHead>
             <TableHead>Payment Mode</TableHead>
+            <TableHead>Payment Accepted By</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -45,10 +46,9 @@ export function ServiceTable({ services, onEdit, onDelete }: ServiceTableProps) 
               <TableCell>{service.employeeName}</TableCell>
               <TableCell>{service.serviceType}</TableCell>
               <TableCell>{format(service.serviceDate, "MMM d, yyyy")}</TableCell>
-              <TableCell className="text-right">{service.paymentAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-              <TableCell>
-                {service.paymentMode}
-              </TableCell>
+              <TableCell className="text-right">{service.paymentAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+              <TableCell>{service.paymentMode}</TableCell>
+              <TableCell>{service.paymentAcceptedBy}</TableCell>
               <TableCell className="text-right space-x-2">
                 <Button variant="ghost" size="icon" onClick={() => onEdit(service)} aria-label="Edit service">
                   <Edit className="h-4 w-4" />

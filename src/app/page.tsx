@@ -15,13 +15,14 @@ import {
   Timestamp,
   updateDoc,
   serverTimestamp,
-  where, // Import where for querying by userId
+  where,
 } from "firebase/firestore";
 import { Download, PlusCircle, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import type { Service, ServiceFormData, ServiceWithId } from "@/types";
-import { ServiceForm } from "@/components/ServiceForm";
+import type { Service, ServiceFormData, ServiceWithId, PaymentAcceptedByType } from "@/types";
+// ServiceForm is now only used for editing
+// import { ServiceForm } from "@/components/ServiceForm";
 import { ServiceTable } from "@/components/ServiceTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ServiceEntryItem, type ServiceEntry } from "@/components/ServiceEntryItem";
+import { ServiceForm } from "@/components/ServiceForm"; // Keep for Edit Dialog
 import {
   Dialog,
   DialogContent,
@@ -50,14 +52,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function ServiceTrackerPage() {
-  const { user, loading: authLoading } = useAuth(); // Get user and loading state
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [services, setServices] = useState<ServiceWithId[]>([]);
-  const [isLoading, setIsLoading] = useState(true); // For service data loading
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentService, setCurrentService] = useState<ServiceWithId | null>(null);
@@ -75,13 +77,12 @@ export default function ServiceTrackerPage() {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (user) { // Only fetch services if user is logged in
+    if (user) {
       setIsLoading(true);
       const servicesCollection = collection(db, "services");
-      // Query services for the current user, ordered by serviceDate
       const q = query(
         servicesCollection,
-        where("userId", "==", user.uid), // Filter by userId
+        where("userId", "==", user.uid),
         orderBy("serviceDate", "desc")
       );
 
@@ -108,7 +109,6 @@ export default function ServiceTrackerPage() {
       );
       return () => unsubscribe();
     } else {
-      // Clear services if user logs out or is not available
       setServices([]);
       setIsLoading(false);
     }
@@ -116,14 +116,13 @@ export default function ServiceTrackerPage() {
 
 
   const handleUpdateService = async (data: ServiceFormData) => {
-    if (!currentService || !user) return; // Ensure user is logged in
-    // Note: Firestore rules should enforce that only the owner (or authorized user) can update.
+    if (!currentService || !user) return;
     try {
       const serviceDocRef = doc(db, "services", currentService.id);
       const updatedService: Partial<Service> = {
         ...data,
         serviceDate: data.serviceDate!,
-        // userId is not updated here, it's set on creation
+        paymentAcceptedBy: data.paymentAcceptedBy, // Ensure this is included
       };
       await updateDoc(serviceDocRef, updatedService);
       toast({ title: "Success", description: "Service record updated." });
@@ -136,15 +135,13 @@ export default function ServiceTrackerPage() {
   };
 
   const handleDeleteService = async () => {
-    if (!serviceToDeleteId || !user) return; // Ensure user is logged in
-    // Note: Firestore rules should enforce deletion permissions
+    if (!serviceToDeleteId || !user) return;
     try {
       await deleteDoc(doc(db, "services", serviceToDeleteId));
       toast({ title: "Success", description: "Service record deleted." });
       setIsDeleteDialogOpen(false);
       setServiceToDeleteId(null);
-    } catch (error)
-{
+    } catch (error) {
       console.error("Error deleting service:", error);
       toast({ title: "Error", description: "Failed to delete service record.", variant: "destructive" });
     }
@@ -165,7 +162,7 @@ export default function ServiceTrackerPage() {
       toast({ title: "Info", description: "No data to export." });
       return;
     }
-    const headers = ["Employee Name", "Service Type", "Service Date", "Payment Amount (₹)", "Payment Mode"];
+    const headers = ["Employee Name", "Service Type", "Service Date", "Payment Amount (₹)", "Payment Mode", "Payment Accepted By"];
     const csvRows = [
       headers.join(','),
       ...services.map(s => [
@@ -173,7 +170,8 @@ export default function ServiceTrackerPage() {
         `"${s.serviceType.replace(/"/g, '""')}"`,
         s.serviceDate instanceof Date ? format(s.serviceDate, "yyyy-MM-dd") : 'Invalid Date',
         s.paymentAmount,
-        s.paymentMode
+        s.paymentMode,
+        `"${s.paymentAcceptedBy.replace(/"/g, '""')}"`
       ].join(','))
     ];
     const csvString = csvRows.join('\r\n');
@@ -199,7 +197,8 @@ export default function ServiceTrackerPage() {
       id: Date.now().toString(),
       serviceType: "",
       paymentAmount: 0,
-      paymentMode: "Online"
+      paymentMode: "Online",
+      paymentAcceptedBy: "Car Heroz Account", // Default value
     }]);
   };
 
@@ -216,7 +215,7 @@ export default function ServiceTrackerPage() {
   };
 
   const handleSaveAllServices = async () => {
-    if (!user) { // Check if user is logged in
+    if (!user) {
       toast({ title: "Authentication Error", description: "You must be logged in to save services.", variant: "destructive" });
       return;
     }
@@ -245,6 +244,11 @@ export default function ServiceTrackerPage() {
         toast({ title: "Validation Error", description: `Payment amount must be positive for all entries.`, variant: "destructive" });
         break;
       }
+      if (!entry.paymentAcceptedBy) {
+         allValid = false;
+        toast({ title: "Validation Error", description: `Payment accepted by is required for all entries.`, variant: "destructive" });
+        break;
+      }
     }
 
     if (!allValid) return;
@@ -258,13 +262,17 @@ export default function ServiceTrackerPage() {
           serviceType: entry.serviceType,
           paymentAmount: Number(entry.paymentAmount),
           paymentMode: entry.paymentMode,
+          paymentAcceptedBy: entry.paymentAcceptedBy,
           createdAt: serverTimestamp() as Timestamp,
-          userId: user.uid, // Associate service with the logged-in user
+          userId: user.uid,
         };
         await addDoc(collection(db, "services"), serviceWithDetails);
       }
       toast({ title: "Success", description: `${serviceEntries.length} service(s) added for ${selectedEmployeeName} on ${format(selectedServiceDate, "PPP")}.` });
       setServiceEntries([]);
+      // Optionally reset employee name and date here if desired
+      // setSelectedEmployeeName("");
+      // setSelectedServiceDate(undefined);
     } catch (error) {
       console.error("Error adding services:", error);
       toast({ title: "Error", description: "Failed to add service records.", variant: "destructive" });
@@ -274,8 +282,7 @@ export default function ServiceTrackerPage() {
   };
 
   const canAddOrSave = selectedEmployeeName.trim() !== "" && selectedServiceDate !== undefined;
-  
-  // If auth is loading or user is not available (and not loading), show loading/redirect message
+
   if (authLoading || (!user && !authLoading)) {
     return (
       <div className="container mx-auto p-4 text-center">
