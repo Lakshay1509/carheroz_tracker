@@ -1,7 +1,8 @@
+
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
-const firebaseConfig = {
+const firebaseConfigValues = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -10,8 +11,18 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+if (typeof window !== 'undefined' && !firebaseConfigValues.projectId) {
+  console.warn(
+    "Firebase Project ID is not set. This is a critical configuration for Firebase to work. " +
+    "Please ensure your .env.local file is in the root of your project and correctly " +
+    "configured with NEXT_PUBLIC_FIREBASE_PROJECT_ID and other Firebase credentials. " +
+    "You may need to restart your Next.js development server after creating or modifying the .env.local file."
+  );
+}
+
 // Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Check if Firebase has already been initialized to prevent errors
+const app = !getApps().length ? initializeApp(firebaseConfigValues) : getApp();
 const db = getFirestore(app);
 
 export { app, db };
