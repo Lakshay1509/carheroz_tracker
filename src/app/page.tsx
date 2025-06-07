@@ -15,7 +15,7 @@ import {
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { Download, PlusCircle } from "lucide-react";
+import { Download, PlusCircle, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import type { Service, ServiceFormData, ServiceWithId } from "@/types";
@@ -23,6 +23,12 @@ import { ServiceForm } from "@/components/ServiceForm";
 import { ServiceTable } from "@/components/ServiceTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { ServiceEntryItem, type ServiceEntry } from "@/components/ServiceEntryItem";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +47,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 export default function ServiceTrackerPage() {
   const [services, setServices] = useState<ServiceWithId[]>([]);
@@ -50,6 +57,11 @@ export default function ServiceTrackerPage() {
   const [currentService, setCurrentService] = useState<ServiceWithId | null>(null);
   const [serviceToDeleteId, setServiceToDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // New state for multi-service entry
+  const [selectedEmployeeName, setSelectedEmployeeName] = useState<string>("");
+  const [selectedServiceDate, setSelectedServiceDate] = useState<Date | undefined>(undefined);
+  const [serviceEntries, setServiceEntries] = useState<ServiceEntry[]>([]);
 
   useEffect(() => {
     const servicesCollection = collection(db, "services");
@@ -79,21 +91,6 @@ export default function ServiceTrackerPage() {
 
     return () => unsubscribe();
   }, [toast]);
-
-  const handleAddService = async (data: ServiceFormData) => {
-    try {
-      const serviceWithTimestamp: Service = {
-        ...data,
-        serviceDate: data.serviceDate!, 
-        createdAt: serverTimestamp() as Timestamp,
-      };
-      await addDoc(collection(db, "services"), serviceWithTimestamp);
-      toast({ title: "Success", description: "Service record added." });
-    } catch (error) {
-      console.error("Error adding service:", error);
-      toast({ title: "Error", description: "Failed to add service record.", variant: "destructive" });
-    }
-  };
 
   const handleUpdateService = async (data: ServiceFormData) => {
     if (!currentService) return;
@@ -170,6 +167,86 @@ export default function ServiceTrackerPage() {
     }
   }, [services, toast]);
 
+  // New handlers for multi-service entry
+  const handleAddServiceEntry = () => {
+    setServiceEntries(prev => [...prev, { 
+      id: Date.now().toString(), // Simple unique ID for client-side list management
+      serviceType: "", 
+      paymentAmount: 0, 
+      paymentMode: "Online" 
+    }]);
+  };
+
+  const handleServiceEntryChange = (id: string, field: keyof Omit<ServiceEntry, 'id'>, value: string | number | Date) => {
+    setServiceEntries(prev => 
+      prev.map(entry => 
+        entry.id === id ? { ...entry, [field]: value } : entry
+      )
+    );
+  };
+
+  const handleRemoveServiceEntry = (id: string) => {
+    setServiceEntries(prev => prev.filter(entry => entry.id !== id));
+  };
+
+  const handleSaveAllServices = async () => {
+    if (!selectedEmployeeName.trim()) {
+      toast({ title: "Validation Error", description: "Employee name is required.", variant: "destructive" });
+      return;
+    }
+    if (!selectedServiceDate) {
+      toast({ title: "Validation Error", description: "Service date is required.", variant: "destructive" });
+      return;
+    }
+    if (serviceEntries.length === 0) {
+      toast({ title: "Info", description: "No service entries to save." });
+      return;
+    }
+
+    let allValid = true;
+    for (const entry of serviceEntries) {
+      if (!entry.serviceType.trim()) {
+        allValid = false;
+        toast({ title: "Validation Error", description: `Service type is required for all entries (entry ID: ${entry.id}).`, variant: "destructive" });
+        break;
+      }
+      if (entry.paymentAmount <= 0) {
+        allValid = false;
+        toast({ title: "Validation Error", description: `Payment amount must be positive for all entries (entry ID: ${entry.id}).`, variant: "destructive" });
+        break;
+      }
+    }
+
+    if (!allValid) return;
+
+    try {
+      setIsLoading(true);
+      for (const entry of serviceEntries) {
+        const serviceWithTimestamp: Service = {
+          employeeName: selectedEmployeeName,
+          serviceDate: selectedServiceDate,
+          serviceType: entry.serviceType,
+          paymentAmount: Number(entry.paymentAmount),
+          paymentMode: entry.paymentMode,
+          createdAt: serverTimestamp() as Timestamp,
+        };
+        await addDoc(collection(db, "services"), serviceWithTimestamp);
+      }
+      toast({ title: "Success", description: `${serviceEntries.length} service(s) added for ${selectedEmployeeName} on ${format(selectedServiceDate, "PPP")}.` });
+      setServiceEntries([]); // Clear entries after saving
+      // Optionally clear selectedEmployeeName and selectedServiceDate
+      // setSelectedEmployeeName("");
+      // setSelectedServiceDate(undefined);
+    } catch (error) {
+      console.error("Error adding services:", error);
+      toast({ title: "Error", description: "Failed to add service records.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const canAddOrSave = selectedEmployeeName.trim() !== "" && selectedServiceDate !== undefined;
+
   return (
     <div className="container mx-auto p-4 md:p-8 font-body">
       <header className="mb-8">
@@ -181,12 +258,81 @@ export default function ServiceTrackerPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-2xl font-headline">
             <PlusCircle className="h-7 w-7 text-accent" />
-            Add New Service Record
+            Add Multiple Service Entries
           </CardTitle>
-          <CardDescription>Fill in the details below to create a new service entry.</CardDescription>
+          <CardDescription>Select an employee and date, then add service details below.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <ServiceForm onSubmit={handleAddService} />
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label htmlFor="employeeName" className="block text-sm font-medium text-foreground mb-1">Employee Name</label>
+              <Input 
+                id="employeeName"
+                placeholder="Enter employee name" 
+                value={selectedEmployeeName}
+                onChange={(e) => setSelectedEmployeeName(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label htmlFor="serviceDate" className="block text-sm font-medium text-foreground mb-1">Service Date</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    id="serviceDate"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !selectedServiceDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedServiceDate ? format(selectedServiceDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={selectedServiceDate}
+                    onSelect={setSelectedServiceDate}
+                    initialFocus
+                    disabled={(date) =>
+                      date > new Date() || date < new Date("1900-01-01")
+                    }
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {canAddOrSave && (
+            <Button onClick={handleAddServiceEntry} variant="outline">
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Another Service
+            </Button>
+          )}
+
+          {serviceEntries.length > 0 && (
+            <div className="space-y-4 mt-4">
+              {serviceEntries.map((entry, index) => (
+                <ServiceEntryItem 
+                  key={entry.id}
+                  entry={entry}
+                  onChange={handleServiceEntryChange}
+                  onRemove={handleRemoveServiceEntry}
+                  entryIndex={index}
+                />
+              ))}
+            </div>
+          )}
+          
+          {serviceEntries.length > 0 && canAddOrSave && (
+            <div className="flex justify-end mt-6">
+              <Button onClick={handleSaveAllServices} disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                <Save className="mr-2 h-4 w-4" />
+                {isLoading ? "Saving..." : `Save All ${serviceEntries.length} Service(s)`}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
       
@@ -195,7 +341,7 @@ export default function ServiceTrackerPage() {
       <Card className="shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-2xl font-headline">Service Records</CardTitle>
+            <CardTitle className="text-2xl font-headline">All Service Records</CardTitle>
             <CardDescription>View and manage all recorded services.</CardDescription>
           </div>
           <Button onClick={exportToCSV} variant="outline" className="ml-auto">
@@ -204,7 +350,7 @@ export default function ServiceTrackerPage() {
           </Button>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isLoading && services.length === 0 ? ( // Show loading only if services are also empty
             <p className="text-center py-8">Loading service records...</p>
           ) : (
             <ServiceTable
@@ -218,7 +364,7 @@ export default function ServiceTrackerPage() {
 
       {/* Edit Service Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-xl"> {/* Adjusted width slightly */}
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="font-headline text-xl">Edit Service Record</DialogTitle>
             <DialogDescription>
@@ -259,3 +405,5 @@ export default function ServiceTrackerPage() {
     </div>
   );
 }
+
+    
