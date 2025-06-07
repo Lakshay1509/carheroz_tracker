@@ -36,12 +36,10 @@ import type { ServiceFormData } from "@/types";
 
 const serviceFormSchema = z.object({
   employeeName: z.string().min(1, "Employee name is required"),
-  customerName: z.string().min(1, "Customer name is required"),
-  customerEmail: z.string().email("Invalid email address"),
   serviceType: z.string().min(1, "Service type is required"),
   serviceDate: z.date({ required_error: "Service date is required" }),
   paymentAmount: z.coerce.number().positive("Payment amount must be positive"),
-  paymentMode: z.enum(["Online", "Cash"], { required_error: "Payment mode is required" }), // Changed from paymentStatus
+  paymentMode: z.enum(["Online", "Cash"], { required_error: "Payment mode is required" }),
 });
 
 interface ServiceFormProps {
@@ -56,23 +54,38 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
     resolver: zodResolver(serviceFormSchema),
     defaultValues: initialData || {
       employeeName: "",
-      customerName: "",
-      customerEmail: "",
       serviceType: "",
       serviceDate: undefined,
       paymentAmount: 0,
-      paymentMode: "Online", // Changed from paymentStatus: "Pending"
+      paymentMode: "Online",
     },
   });
 
-  const paymentModeOptions: Array<ServiceFormData["paymentMode"]> = ["Online", "Cash"]; // Changed from paymentStatusOptions
+  const paymentModeOptions: Array<ServiceFormData["paymentMode"]> = ["Online", "Cash"];
 
   async function handleSubmit(data: ServiceFormData) {
     await onSubmit(data);
     if (!isEditing) {
-      form.reset();
+      // Reset form to defaultValues when adding, not to potentially populated defaultValues from initialData
+      form.reset({ 
+        employeeName: "",
+        serviceType: "",
+        serviceDate: undefined,
+        paymentAmount: 0,
+        paymentMode: "Online",
+      });
     }
   }
+
+  const handleReset = () => {
+    form.reset({
+      employeeName: "",
+      serviceType: "",
+      serviceDate: undefined,
+      paymentAmount: 0,
+      paymentMode: "Online",
+    });
+  };
 
   return (
     <Form {...form}>
@@ -86,32 +99,6 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
                 <FormLabel>Employee Name</FormLabel>
                 <FormControl>
                   <Input placeholder="e.g. John Doe" {...field} spellCheck={false} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="customerName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Customer Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g. Jane Smith" {...field} spellCheck={false} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="customerEmail"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Customer Email</FormLabel>
-                <FormControl>
-                  <Input type="email" placeholder="e.g. jane@example.com" {...field} spellCheck={false} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -176,7 +163,7 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
             name="paymentAmount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Payment Amount (₹)</FormLabel> {/* Changed label */}
+                <FormLabel>Payment Amount (₹)</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" {...field} />
                 </FormControl>
@@ -186,10 +173,10 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
           />
           <FormField
             control={form.control}
-            name="paymentMode" // Changed from paymentStatus
+            name="paymentMode"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Payment Mode</FormLabel> {/* Changed label */}
+                <FormLabel>Payment Mode</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -197,7 +184,7 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {paymentModeOptions.map((mode) => ( // Changed from paymentStatusOptions
+                    {paymentModeOptions.map((mode) => (
                       <SelectItem key={mode} value={mode}>
                         {mode}
                       </SelectItem>
@@ -210,6 +197,9 @@ export function ServiceForm({ onSubmit, initialData, isEditing = false, onClose 
           />
         </div>
         <div className="flex justify-end space-x-2">
+          {!isEditing && (
+             <Button type="button" variant="outline" onClick={handleReset}>Reset</Button>
+          )}
           {isEditing && onClose && (
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           )}

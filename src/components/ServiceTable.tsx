@@ -12,9 +12,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2 } from "lucide-react";
-import type { ServiceWithId } from "@/types"; // ServiceWithId will have paymentMode
+import type { ServiceWithId } from "@/types";
 import { format } from "date-fns";
-// import { cn } from "@/lib/utils"; // cn might not be needed anymore if styling is removed
 
 interface ServiceTableProps {
   services: ServiceWithId[];
@@ -33,11 +32,10 @@ export function ServiceTable({ services, onEdit, onDelete }: ServiceTableProps) 
         <TableHeader>
           <TableRow>
             <TableHead>Employee</TableHead>
-            <TableHead>Customer</TableHead>
             <TableHead>Service Type</TableHead>
             <TableHead>Date</TableHead>
             <TableHead className="text-right">Amount</TableHead>
-            <TableHead>Payment Mode</TableHead> {/* Changed header from Status */}
+            <TableHead>Payment Mode</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -45,15 +43,11 @@ export function ServiceTable({ services, onEdit, onDelete }: ServiceTableProps) 
           {services.map((service) => (
             <TableRow key={service.id} className="hover:bg-muted/50 transition-colors">
               <TableCell>{service.employeeName}</TableCell>
-              <TableCell>
-                <div>{service.customerName}</div>
-                <div className="text-xs text-muted-foreground">{service.customerEmail}</div>
-              </TableCell>
               <TableCell>{service.serviceType}</TableCell>
               <TableCell>{format(service.serviceDate, "MMM d, yyyy")}</TableCell>
-              <TableCell className="text-right">₹{service.paymentAmount.toFixed(2)}</TableCell> {/* Added ₹ symbol */}
+              <TableCell className="text-right">₹{service.paymentAmount.toFixed(2)}</TableCell>
               <TableCell>
-                {service.paymentMode} {/* Changed from service.paymentStatus and removed specific styling */}
+                {service.paymentMode}
               </TableCell>
               <TableCell className="text-right space-x-2">
                 <Button variant="ghost" size="icon" onClick={() => onEdit(service)} aria-label="Edit service">

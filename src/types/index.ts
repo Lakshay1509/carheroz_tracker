@@ -3,12 +3,10 @@ import type { Timestamp } from "firebase/firestore";
 
 export interface Service {
   employeeName: string;
-  customerName: string;
-  customerEmail: string;
   serviceType: string;
   serviceDate: Date; // Stored as Date object, converted to/from Firestore Timestamp
   paymentAmount: number;
-  paymentMode: "Online" | "Cash"; // Changed from paymentStatus to paymentMode and new values
+  paymentMode: "Online" | "Cash";
   createdAt?: Timestamp; // Firestore Timestamp for sorting
 }
 

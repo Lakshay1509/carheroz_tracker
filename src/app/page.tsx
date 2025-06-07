@@ -63,9 +63,9 @@ export default function ServiceTrackerPage() {
           return {
             id: doc.id,
             ...data,
-            serviceDate: (data.serviceDate as Timestamp).toDate(), // Convert Firestore Timestamp to Date
+            serviceDate: (data.serviceDate as Timestamp).toDate(),
             createdAt: data.createdAt as Timestamp,
-          } as ServiceWithId; // ServiceWithId type is updated, will expect paymentMode
+          } as ServiceWithId;
         });
         setServices(servicesData);
         setIsLoading(false);
@@ -80,10 +80,10 @@ export default function ServiceTrackerPage() {
     return () => unsubscribe();
   }, [toast]);
 
-  const handleAddService = async (data: ServiceFormData) => { // ServiceFormData type is updated
+  const handleAddService = async (data: ServiceFormData) => {
     try {
-      const serviceWithTimestamp: Service = { // Service type is updated
-        ...data, // data now contains paymentMode instead of paymentStatus
+      const serviceWithTimestamp: Service = {
+        ...data,
         serviceDate: data.serviceDate!, 
         createdAt: serverTimestamp() as Timestamp,
       };
@@ -95,12 +95,12 @@ export default function ServiceTrackerPage() {
     }
   };
 
-  const handleUpdateService = async (data: ServiceFormData) => { // ServiceFormData type is updated
+  const handleUpdateService = async (data: ServiceFormData) => {
     if (!currentService) return;
     try {
       const serviceDocRef = doc(db, "services", currentService.id);
-      const updatedService: Partial<Service> = { // Service type is updated
-        ...data, // data now contains paymentMode
+      const updatedService: Partial<Service> = {
+        ...data,
         serviceDate: data.serviceDate!,
       };
       await updateDoc(serviceDocRef, updatedService);
@@ -126,7 +126,7 @@ export default function ServiceTrackerPage() {
     }
   };
 
-  const openEditDialog = (service: ServiceWithId) => { // ServiceWithId type is updated
+  const openEditDialog = (service: ServiceWithId) => {
     setCurrentService(service);
     setIsEditDialogOpen(true);
   };
@@ -141,18 +141,15 @@ export default function ServiceTrackerPage() {
       toast({ title: "Info", description: "No data to export." });
       return;
     }
-    // Updated headers and data access for paymentMode
-    const headers = ["Employee Name", "Customer Name", "Customer Email", "Service Type", "Service Date", "Payment Amount", "Payment Mode"];
+    const headers = ["Employee Name", "Service Type", "Service Date", "Payment Amount", "Payment Mode"];
     const csvRows = [
       headers.join(','),
       ...services.map(s => [
         `"${s.employeeName.replace(/"/g, '""')}"`,
-        `"${s.customerName.replace(/"/g, '""')}"`,
-        `"${s.customerEmail.replace(/"/g, '""')}"`,
         `"${s.serviceType.replace(/"/g, '""')}"`,
         s.serviceDate.toISOString().split('T')[0], 
         s.paymentAmount,
-        s.paymentMode // Changed from s.paymentStatus
+        s.paymentMode
       ].join(','))
     ];
     const csvString = csvRows.join('\r\n');
@@ -221,17 +218,17 @@ export default function ServiceTrackerPage() {
 
       {/* Edit Service Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-xl"> {/* Adjusted width slightly */}
           <DialogHeader>
             <DialogTitle className="font-headline text-xl">Edit Service Record</DialogTitle>
             <DialogDescription>
               Update the details for this service record. Click save when you're done.
             </DialogDescription>
           </DialogHeader>
-          {currentService && ( // currentService is ServiceWithId, which now has paymentMode
+          {currentService && (
             <ServiceForm
               onSubmit={handleUpdateService}
-              initialData={{ // initialData is ServiceFormData, which now expects paymentMode
+              initialData={{ 
                 ...currentService,
                 serviceDate: currentService.serviceDate, 
               }}
