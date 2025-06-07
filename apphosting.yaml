@@ -1,6 +1,11 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
 
+# IMPORTANT FOR DEPLOYMENT:
+# You MUST configure your Firebase SDK credentials (NEXT_PUBLIC_FIREBASE_API_KEY, etc.)
+# as environment variables in your App Hosting backend settings in the Firebase Console.
+# These are NOT deployed from your .env.local file.
+
 runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
