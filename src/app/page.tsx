@@ -239,7 +239,7 @@ export default function ServiceTrackerPage() {
         toast({ title: "Validation Error", description: `Service type is required for all entries.`, variant: "destructive" });
         break;
       }
-      if (entry.paymentAmount <= 0) {
+      if (entry.paymentAmount < 0) {
         allValid = false;
         toast({ title: "Validation Error", description: `Payment amount must be positive for all entries.`, variant: "destructive" });
         break;
